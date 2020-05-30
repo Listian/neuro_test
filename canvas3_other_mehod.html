@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html>
+
+	<head>
+	</head>
+
+	<body>
+
+		<canvas id="canvas2d1" width=500 height=500></canvas>
+		<canvas id="canvas2d2" width=500 height=500></canvas>
+		<canvas id="canvas2de" style = "vertical-align: top; margin-left: 50px;" width=200 height=100></canvas>
+		
+		<script>
+
+			var canvas1 = document.getElementById('canvas2d1');
+			var ctx1 = canvas1.getContext('2d');
+			
+			var canvas2 = document.getElementById('canvas2d2');
+			var ctx2 = canvas2.getContext('2d');
+			
+			var canvase = document.getElementById('canvas2de');
+			var ctxe = canvase.getContext('2d');
+			ctxe.beginPath();
+				
+			coords();
+			
+			function coords()
+			{
+			
+				ctx1.fillStyle = '#ffffff';
+				ctx1.fillRect(0, 0, canvas1.width, canvas1.height);
+
+				// Рисуем ось X
+				ctx1.beginPath();
+				ctx1.moveTo(0, canvas1.height/2);
+				ctx1.lineTo(canvas1.width, canvas1.height/2);
+				ctx1.stroke();
+
+				// Рисуем ось Y 
+				ctx1.beginPath();
+				ctx1.moveTo(canvas1.width/2, 0);
+				ctx1.lineTo(canvas1.width/2, canvas1.height);
+				ctx1.stroke();
+				
+				ctx2.fillStyle = '#ffffff';
+				ctx2.fillRect(0, 0, canvas2.width, canvas2.height);
+
+				// Рисуем ось X
+				ctx2.beginPath();
+				ctx2.moveTo(0, canvas2.height/2);
+				ctx2.lineTo(canvas2.width, canvas2.height/2);
+				ctx2.stroke();
+
+				// Рисуем ось Y 
+				ctx2.beginPath();
+				ctx2.moveTo(canvas2.width/2, 0);
+				ctx2.lineTo(canvas2.width/2, canvas2.height);
+				ctx2.stroke();
+
+				ctxe.fillStyle = '#ffffff';
+				ctxe.fillRect(0, 0, canvase.width, canvase.height);
+
+				// Рисуем ось X
+				ctxe.beginPath();
+				ctxe.moveTo(0, canvase.height);
+				ctxe.lineTo(canvase.width, canvase.height);
+				ctxe.stroke();
+
+				// Рисуем ось Y 
+				ctxe.beginPath();
+				ctxe.moveTo(0, 0);
+				ctxe.lineTo(0, canvase.height);
+				ctxe.stroke();				
+				
+				ctxe.beginPath();
+				
+			}
+			
+			function convert_y(value)
+			{
+				return canvas1.height - (canvas1.height / (y_max - y_min)) * (value + Math.abs(y_min));
+			}
+			
+			function convert_x(value)
+			{
+				return (canvas1.width / (x_max - x_min)) * (value + Math.abs(x_min));
+			}
+			
+			function point(ctx, x, y, value)
+			{
+
+				ctx.beginPath();
+				
+				if (value == 1)
+				{				
+					ctx.fillStyle = '#ff0000';
+				}
+				
+				ctx.arc(convert_x(x), convert_y(y), 5, 0, 2 * Math.PI);
+
+				if (value == 1)
+				{
+					ctx.fill();
+				}
+				else
+				{
+					ctx.strokeStyle = '#ff0000';
+					ctx.stroke();
+				}
+				
+			}
+
+			function line_k(ctx, k, b, color = '#000000')
+			{
+
+				ctx.beginPath();
+				ctx.strokeStyle = color;
+
+				for (var x = x_min; x <= x_max; x++) 
+				{
+					y = k * x + b;
+					
+					ctx.lineTo(convert_x(x), convert_y(y));
+					ctx.stroke();
+				}
+				
+			}				
+
+			function line(ctx, a, b, c, color = '#000000')
+			{
+
+				line_k(ctx, -a/b, -c/b, color);
+				
+			}
+			
+			// график ошибок
+			function error(e, epoch_num)
+			{
+
+				ctxe.strokeStyle = '#ff0000';
+				ctxe.lineTo((epoch_num - 1) * (canvase.width / epochs), 100 - e * 100);
+				ctxe.stroke();
+			}
+
+			// функция активации - сигмоида
+			function sigmoid(x)
+			{	
+				
+				return 1 / (1 + Math.exp(-x));
+				
+			}
+			
+			// дифференциал сигмоиды
+			function dsigmoid(y)
+			{
+
+				return y * (1 - y);
+				
+			}
+			
+			// функция активации - Leaky ReLU
+			function lrelu(x)
+			{	
+				
+				if (x >= 0)
+				{
+					return x; 
+				}
+				else
+				{
+					return x * 0.01;
+				}
+
+			}
+			
+			// дифференциал Leaky ReLU
+			function dlrelu(y)
+			{
+				
+				if (y >= 0)
+				{
+					return 1; 
+				}
+				else
+				{
+					return 0.01;
+				}
+
+			}
+
+			// среднеквадратичное отклонение для одного элемента
+			function mse(e, digits = 1)
+			{
+				return ((e**2) * 100).toFixed(digits);
+			}
+			
+			// среднеквадратичное отклонение для всего тренироочного набора
+			function main_mse(e1, e2 = [])
+			{
+				
+				var sum = 0;
+				
+				e1.forEach(function(item, i){
+						
+					sum += item**2;
+					
+				});
+				
+				e2.forEach(function(item, i){
+						
+					sum += item**2;
+					
+				});
+
+				return sum / (e1.length + e2.length);
+
+			}
+			
+			function random(min = -0.5, max = 0.5) 
+			{
+				
+				 return Math.random() * (max - min) + min;
+				
+			}
+			
+//------------------------------------------------------------------------------------------------
+			// минимум и максимум на графике
+			var x_min = -2;
+			var x_max = 2;
+			var y_min = -2;
+			var y_max = 2;
+			
+			// тренировочный набор
+			var train = [
+				{'in': {'x': 0, 'y': 0}, 'out': {'1': 0}},
+				{'in': {'x': 0, 'y': 1}, 'out': {'1': 1}},
+				{'in': {'x': 1, 'y': 0}, 'out': {'1': 1}},
+				{'in': {'x': 1, 'y': 1}, 'out': {'1': 0}},	
+			];
+			
+			// веса нейронов			
+			var weights = {
+				'wx1': 0.1, 'wy1': 0.6, 'b11': 0.2,
+				'wx2': 0.2, 'wy2': 0.3, 'b12': -0.3,
+				'w13': -0.3, 'w23': 0.1, 'b23': -0.1,
+			};
+/*
+			for(item in weights)
+			{
+				weights[item] = random();		
+			}		
+			console.log(weights);
+*/
+			var epochs = 1000; 				// кол-во эпох (проходов)
+			var learning_rate = 2;			// скорость обучения
+			
+			var e1 = [];					// массив ошибок
+			var e2 = [];					// массив ошибок
+			var e3 = [];					// массив ошибок
+			
+			// вывод точек на графике
+			train.forEach(function(item){
+				
+				point(ctx1, item['in']['x'], item['in']['y'], item['out']['1']);
+				
+			});	
+				
+			for(item in weights)
+			{
+				console.log(item + ' = ' + weights[item]);		
+			};
+						
+			console.log('----------------------------------------------------');
+			console.log('learning_rate = ' + learning_rate);
+			console.log('epochs = ' + epochs);			
+			
+			for (epoch_num = 1; epoch_num <= epochs; epoch_num++)
+			{
+
+				console.log(epoch_num + ' ----------------------------------------------------');
+				
+				train.forEach(function(item, i){
+
+					// Прогнозирование	
+					S1 = item['in']['x'] * weights['wx1'] + item['in']['y'] * weights['wy1'] + weights['b11']; out1 = sigmoid(S1);	
+					S2 = item['in']['x'] * weights['wx2'] + item['in']['y'] * weights['wy2'] + weights['b12']; out2 = sigmoid(S2);	
+					S3 = out1 * weights['w13'] + out2 * weights['w23'] + weights['b23'];					   out3 = sigmoid(S3);
+					
+					if (epoch_num == epochs)
+					{
+						
+						point(ctx2, out1, out2, item['out']['1']);
+						document.write('<br>' + 'out1 = f1(S) = ' + out1);
+						document.write('<br>' + 'out2 = f2(S) = ' + out2);
+
+					}
+					
+					// Вычисление ошибки
+					e3[i] = item['out']['1'] - out3;
+					e1[i] = weights['w13'] * e3[i];
+					e2[i] = weights['w23'] * e3[i];
+
+					// Коррекция весов
+					weights['wx1'] = weights['wx1'] + learning_rate * e1[i] * dsigmoid(out1) * item['in']['x'];
+					weights['wy1'] = weights['wy1'] + learning_rate * e1[i] * dsigmoid(out1) * item['in']['y'];
+					weights['b11'] = weights['b11'] + learning_rate * e1[i] * dsigmoid(out1);
+					
+					weights['wx2'] = weights['wx2'] + learning_rate * e2[i] * dsigmoid(out2) * item['in']['x'];
+					weights['wy2'] = weights['wy2'] + learning_rate * e2[i] * dsigmoid(out2) * item['in']['y'];
+					weights['b12'] = weights['b12'] + learning_rate * e2[i] * dsigmoid(out2);
+
+					weights['w13'] = weights['w13'] + learning_rate * e3[i] * dsigmoid(out3) * out1;
+					weights['w23'] = weights['w23'] + learning_rate * e3[i] * dsigmoid(out3) * out2;
+					weights['b23'] = weights['b23'] + learning_rate * e3[i] * dsigmoid(out3);
+
+				//	console.log('S1 = ' + S1);
+					console.log('out3 = f3(S) = ' + out3 + ' 		mse = ' + mse(e3[i]) + ' %');
+				//	console.log('e1 = ' + e1[i]);
+				//	console.log('delta1 = ' + delta1);
+				//	console.log('wx1 = ' + weights['wx1']);
+				//	console.log('wy1 = ' + weights['wy1']);
+				//	console.log('b11 = ' + weights['b11']);
+				//	console.log('k = ' + weights['wx1']/weights['wy1']);					
+
+				})
+
+				console.log('main_mse = ' + main_mse(e3) * 100 + ' %');
+				error(main_mse(e3), epoch_num);
+				
+			}
+			console.log('----------------------------------------------------');
+			
+			document.write('<br>');
+
+			for(item in weights)
+			{
+				document.write('<br>' + item + ' = ' + weights[item]);		
+			}
+			
+			document.write('<br>');
+			
+			e3.forEach(function(item, i){
+				document.write('<br>' + train[i]['out']['1'] + ' = ' + mse(item) + ' %');	
+			})
+
+			document.write('<br>' + 'main_mse = ' + main_mse(e3) * 100 + ' %');
+			
+			// вывод линии
+			line(ctx1, weights['wx1'], weights['wy1'], weights['b11'], '#ff0000');
+			line(ctx1, weights['wx2'], weights['wy2'], weights['b12'], '#ff0000');
+
+			line(ctx2, weights['w13'], weights['w23'], weights['b23'], '#0000ff');
+			
+		</script>
+
+	</body>
+
+</html>
